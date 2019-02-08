@@ -13,8 +13,6 @@ var api = express.Router();
 api.get('/ejemplo', md_auth.ensureAuth, UserController.ejemplo);
 api.post('/registrar', UserController.registrar);
 api.post('/login', UserController.login);
-// api.post('/subir-imagen-usuario/:id', [md_auth.ensureAuth, md_subir], UserController.subirImagen);
-// api.get('/obtener-imagen-usuario/:nombreImagen', UserController.obtenerImagen)
 api.put('/editar-usuario/:id', md_auth.ensureAuth, UserController.editarUsuario)
 
 
