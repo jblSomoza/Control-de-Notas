@@ -67,11 +67,11 @@ function login(req, res) {
             bcrypt.compare(password, user.password, (err, check)=>{
                 if(check){
                     if(params.getToken){
-                        if(req.params.rol == admin){
+                        if(req.params.rol == 'Administrador' || req.params.rol == 'administrador'){
                             return res.status(200).send({
                                 token: jwt.createToken(user)
                             })
-                        }else if(req.params.rol == usuario){
+                        }else if(req.params.rol == 'Usuario' || req.params.rol == 'usuario'){
                             return res.status(200).send({
                                 token: jwt.createToken(user)
                             })
@@ -116,38 +116,40 @@ function crearEmpresa(req, res) {
     var company = new Company();
     var params = req.body;
 
-    if(params.nombre && params.contacto && params.telefono){
-        company.nombre = params.nombre;
-        company.contacto = params.contacto;
-        company.telefono = params.telefono;
-        company.direccion = params.direccion;
-
-        User.find({ $or:[
-            {nombre: company.nombre.toLowerCase()},
-            {nombre: company.nombre.toUpperCase()},
-            {direccion: company.direccion.toLowerCase()},
-            {direccion: company.direccion.toUpperCase()}
-        ]}).exec((err, company2) =>{
-            if(err)return res.status(500).send({message: 'Error en la peticion de usuario'})
-
-            if(company2 && company2.length >= 1){
-                return res.status(500).send({message: 'El usuario ya existe en el sistema'})
-            }else{
-                company.save((err, empresaGuardada)=>{
-                    if(err) return res.status(500).send({message: 'Error al guardar la empresa'});
-
-                    if(empresaGuardada){
-                        res.status(200).send({company: empresaGuardada});
-                    }else{
-                        res.status(404).send({message: 'No se a podido registrar la empresa'});
-                    }
-                })
-            }
-        })
-    }else{
-        res.status(200).send({
-            message: 'Rellene todos los campos necesarios'
-        });
+    if(req.user.rol == 'Administrador'){
+        if(params.nombre && params.contacto && params.telefono){
+            company.nombre = params.nombre;
+            company.contacto = params.contacto;
+            company.telefono = params.telefono;
+            company.direccion = params.direccion;
+    
+            User.find({ $or:[
+                {nombre: company.nombre.toLowerCase()},
+                {nombre: company.nombre.toUpperCase()},
+                {direccion: company.direccion.toLowerCase()},
+                {direccion: company.direccion.toUpperCase()}
+            ]}).exec((err, company2) =>{
+                if(err)return res.status(500).send({message: 'Error en la peticion de usuario'})
+    
+                if(company2 && company2.length >= 1){
+                    return res.status(500).send({message: 'El usuario ya existe en el sistema'})
+                }else{
+                    company.save((err, empresaGuardada)=>{
+                        if(err) return res.status(500).send({message: 'Error al guardar la empresa'});
+    
+                        if(empresaGuardada){
+                            res.status(200).send({company: empresaGuardada});
+                        }else{
+                            res.status(404).send({message: 'No se a podido registrar la empresa'});
+                        }
+                    })
+                }
+            })
+        }else{
+            res.status(200).send({
+                message: 'Rellene todos los campos necesarios'
+            });
+        }
     }
 }
 
