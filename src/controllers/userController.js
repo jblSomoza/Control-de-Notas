@@ -21,8 +21,7 @@ function registrar(req, res){
         user.usuario = params.usuario;
         user.email = params.email;
         user.password = params.password;
-        user.rol = 'Admin';
-        user.image = null;
+        user.rol = params.rol;
 
         User.find({ $or:[
             {email: user.email.toLowerCase()},
@@ -93,7 +92,6 @@ function editarUsuario(req, res){
 
     //BORRAR LA PROPIEDAD DE PASSWORD
     delete params.password;
-
 
     if(userId != req.user.sub){
         return res.status(500).send({message: 'no tiene los permisos para actualizar los datos de este usuario'})

@@ -9,7 +9,6 @@ var UserSchema = Schema({
     email: String,
     rol: String,
     password: String,
-    image: String
 });
 
 module.exports = mongoose.model('User', UserSchema); //Este nombre es de la base de datos
