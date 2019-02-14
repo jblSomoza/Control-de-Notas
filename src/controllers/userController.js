@@ -2,9 +2,8 @@
 
 var bcrypt = require('bcrypt-nodejs');
 var User = require('../models/user');
+var Company = require('../models/company');
 var jwt = require('../services/jwt');
-var path = require('path');
-var fs = require('fs');
 
 function ejemplo(req, res) {
     res.status(200).send({
@@ -68,10 +67,18 @@ function login(req, res) {
             bcrypt.compare(password, user.password, (err, check)=>{
                 if(check){
                     if(params.getToken){
-                        return res.status(200).send({
-                            token: jwt.createToken(user)
-                        })
-                    } else{
+                        if(req.params.rol == admin){
+                            return res.status(200).send({
+                                token: jwt.createToken(user)
+                            })
+                        }else if(req.params.rol == usuario){
+                            return res.status(200).send({
+                                token: jwt.createToken(user)
+                            })
+                        }else{
+                            return res.status(404).send({message: 'El rol no es Usuario ni Administrardor'});
+                        }
+                    }else{
                         user.password = undefined;
                         return res.status(200).send({user})
                     }
@@ -105,9 +112,78 @@ function editarUsuario(req, res){
     })
 }
 
+function crearEmpresa(req, res) {
+    var company = new Company();
+    var params = req.body;
+
+    if(params.nombre && params.contacto && params.telefono){
+        company.nombre = params.nombre;
+        company.contacto = params.contacto;
+        company.telefono = params.telefono;
+        company.direccion = params.direccion;
+
+        User.find({ $or:[
+            {nombre: company.nombre.toLowerCase()},
+            {nombre: company.nombre.toUpperCase()},
+            {direccion: company.direccion.toLowerCase()},
+            {direccion: company.direccion.toUpperCase()}
+        ]}).exec((err, company2) =>{
+            if(err)return res.status(500).send({message: 'Error en la peticion de usuario'})
+
+            if(company2 && company2.length >= 1){
+                return res.status(500).send({message: 'El usuario ya existe en el sistema'})
+            }else{
+                company.save((err, empresaGuardada)=>{
+                    if(err) return res.status(500).send({message: 'Error al guardar la empresa'});
+
+                    if(empresaGuardada){
+                        res.status(200).send({company: empresaGuardada});
+                    }else{
+                        res.status(404).send({message: 'No se a podido registrar la empresa'});
+                    }
+                })
+            }
+        })
+    }else{
+        res.status(200).send({
+            message: 'Rellene todos los campos necesarios'
+        });
+    }
+}
+
+function modificarEmpresa(req, res) {
+    var empresaId = req.params.empresaId;
+    var update = req.params.body;
+
+    Company.findOneAndUpdate(empresaId, update, (err, empresaActualizada)=>{
+        if(err) return res.status(500).send({message: 'Error en la peticion'})
+
+        if(!empresaActualizada) return res.status(404).send({message: 'No se a podido actualizar'});
+
+        res.status(200).send({ company: empresaActualizada});
+    })
+}
+
+function borrarEmpresa(req, res) {
+    var empresaId = req.params.empresaId;
+
+    Company.findOneAndDelete(empresaId, (err, empresaBorrada) =>{
+        if(err) return res.status(500).send({message: 'Error en la peticion'})
+
+        if(!empresaBorrada) return res.status(404).send({message: 'No se a podido borrar'});
+
+        if(err) return next(err);
+
+        res.status(200).send({message: 'Se logro eliminar la empresa correctamente'});
+    })
+}
+
 module.exports = {
     ejemplo,
     registrar,
     login,
-    editarUsuario
+    editarUsuario,
+    crearEmpresa,
+    modificarEmpresa,
+    borrarEmpresa
 }
