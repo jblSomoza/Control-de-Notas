@@ -67,14 +67,17 @@ function login(req, res) {
             bcrypt.compare(password, user.password, (err, check)=>{
                 if(check){
                     if(params.getToken){
-                        if(req.params.rol == 'Administrador' || req.params.rol == 'administrador'){
+                        if(req.body.rol == 'Administrador' || req.body.rol == 'administrador'){
                             return res.status(200).send({
-                                token: jwt.createToken(user)
-                            })
-                        }else if(req.params.rol == 'Usuario' || req.params.rol == 'usuario'){
+                                token: jwt.createToken(user),
+                                message: 'Es administrador'
+                            })                            
+                        }else if(req.body.rol == 'Usuario' || req.body.rol == 'usuario'){
                             return res.status(200).send({
-                                token: jwt.createToken(user)
+                                token: jwt.createToken(user),
+                                message: 'Es usuario'
                             })
+
                         }else{
                             return res.status(404).send({message: 'El rol no es Usuario ni Administrardor'});
                         }
@@ -116,7 +119,9 @@ function crearEmpresa(req, res) {
     var company = new Company();
     var params = req.body;
 
-    if(req.user.rol == 'Administrador'){
+    if(req.user.rol == 'Administrador')
+    {        
+        
         if(params.nombre && params.contacto && params.telefono){
             company.nombre = params.nombre;
             company.contacto = params.contacto;
@@ -150,6 +155,8 @@ function crearEmpresa(req, res) {
                 message: 'Rellene todos los campos necesarios'
             });
         }
+    }else{
+        res.status(404).send({message: 'Usted no es administrador'});
     }
 }
 
