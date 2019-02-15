@@ -15,43 +15,45 @@ function registrar(req, res){
     var user = new User();
     var params = req.body;
 
-    if(params.usuario && params.email && params.password){
-        user.nombre = params.nombre;
-        user.usuario = params.usuario;
-        user.email = params.email;
-        user.password = params.password;
-        user.rol = params.rol;
-
-        User.find({ $or:[
-            {email: user.email.toLowerCase()},
-            {email: user.email.toUpperCase()},
-            {usuario: user.usuario.toLowerCase()},
-            {usuario: user.usuario.toUpperCase()}
-        ]}).exec((err, users) =>{
-            if(err)return res.status(500).send({message: 'Error en la peticion de usuario'})
-
-            if(users && users.length >= 1){
-                return res.status(500).send({message: 'El usuario ya existe en el sistema'})
-            }else{
-                bcrypt.hash(params.password, null, null, (err, hash)=>{
-                    user.password = hash;
-
-                    user.save((err, usuarioGuardado)=>{
-                        if(err)return res.status(500).send({message: 'Error al guardar el usuario'});
-
-                        if(usuarioGuardado){
-                            res.status(200).send({user: usuarioGuardado});
-                        }else{
-                            res.status(404).send({message: 'no se a podido registar al usuario'})
-                        }
+    if(req.user.rol != 'Administrador'){
+        if(params.usuario && params.email && params.password){
+            user.nombre = params.nombre;
+            user.usuario = params.usuario;
+            user.email = params.email;
+            user.password = params.password;
+            user.rol = params.rol;
+    
+            User.find({ $or:[
+                {email: user.email.toLowerCase()},
+                {email: user.email.toUpperCase()},
+                {usuario: user.usuario.toLowerCase()},
+                {usuario: user.usuario.toUpperCase()}
+            ]}).exec((err, users) =>{
+                if(err)return res.status(500).send({message: 'Error en la peticion de usuario'})
+    
+                if(users && users.length >= 1){
+                    return res.status(500).send({message: 'El usuario ya existe en el sistema'})
+                }else{
+                    bcrypt.hash(params.password, null, null, (err, hash)=>{
+                        user.password = hash;
+    
+                        user.save((err, usuarioGuardado)=>{
+                            if(err)return res.status(500).send({message: 'Error al guardar el usuario'});
+    
+                            if(usuarioGuardado){
+                                res.status(200).send({user: usuarioGuardado});
+                            }else{
+                                res.status(404).send({message: 'no se a podido registar al usuario'})
+                            }
+                        })
                     })
-                })
-            }
-        })
-    }else{
-        res.status(200).send({
-            message: 'Rellene todos los campos necesarios'
-        });
+                }
+            })
+        }else{
+            res.status(200).send({
+                message: 'Rellene todos los campos necesarios'
+            });
+        }
     }
 }
 
@@ -86,22 +88,60 @@ function login(req, res) {
 }
 
 function editarUsuario(req, res){
-    var userId = req.params.id;
-    var params = req.body;
-
-    //BORRAR LA PROPIEDAD DE PASSWORD
-    delete params.password;
 
     if(userId != req.user.sub){
-        return res.status(500).send({message: 'no tiene los permisos para actualizar los datos de este usuario'})
+        if(req.user.rol != 'Administrador'){
+            return res.status(500).send({message: 'no tiene los permisos para actualizar los datos de este usuario'})
+        }
+        if(req.user.rol == 'Administrador'){
+            var userId = req.params.id;
+            var params = req.body;
+    
+        //BORRAR LA PROPIEDAD DE PASSWORD
+            delete params.password;
+    
+            
+            User.findByIdAndUpdate(userId, params, {new:true}, (err, usuarioActualizado)=>{
+                if(err) return res.status(500).send({message: 'error en la peticion'})
+    
+                if(!usuarioActualizado) return res.status(404).send({message: 'No se ha podido actualziar los datos del usuario'})
+            
+                return res.status(200).send({user: usuarioActualizado})
+            })
+        }        
     }
-    User.findByIdAndUpdate(userId, params, {new:true}, (err, usuarioActualizado)=>{
-        if(err) return res.status(500).send({message: 'error en la peticion'})
+       
+}
 
-        if(!usuarioActualizado) return res.status(404).send({message: 'No se ha podido actualziar los datos del usuario'})
-        
-        return res.status(200).send({user: usuarioActualizado})
-    })
+function borrarUsuario(req, res) {
+
+    if(req.user.rol == 'Administrador')
+    {  
+        var usuarioId = req.params.usuarioId;
+
+        User.findOneAndDelete(usuarioId, (err, usuarioBorrado) =>{
+            if(err) return res.status(500).send({message: 'Error en la peticion'})
+
+            if(!usuarioBorrado) return res.status(404).send({message: 'No se a podido borrar'});
+
+            if(err) return next(err);
+
+            res.status(200).send({message: 'Se logro eliminar el usuario correctamente'});
+        })
+    }else{
+        res.status(404).send({message: 'Usted no es administrador'});
+    }
+}
+
+function buscarUsuario(req, res) {
+    var nombre = req.body.nombre; 
+    
+    User.find(
+        {nombre: new RegExp('^' + nombre, 'i')
+    }).exec((err, buscarUsuario)=>{
+        if(!buscarUsuario) return res.status(404).send({message: 'No hay Coincidencias en la Base de Datos'});
+        return res.status(200).send({buscarUsuario:buscarUsuario});
+    });
 }
 
 function crearEmpresa(req, res) {
@@ -150,16 +190,19 @@ function crearEmpresa(req, res) {
 }
 
 function modificarEmpresa(req, res) {
-    var empresaId = req.params.empresaId;
-    var update = req.params.body;
 
-    Company.findOneAndUpdate(empresaId, update, (err, empresaActualizada)=>{
-        if(err) return res.status(500).send({message: 'Error en la peticion'})
+    if(req.user.rol == 'Administrador'){
+        var empresaId = req.params.empresaId;
+        var update = req.body;
 
-        if(!empresaActualizada) return res.status(404).send({message: 'No se a podido actualizar'});
+        Company.findOneAndUpdate(empresaId, update, (err, empresaActualizada)=>{
+            if(err) return res.status(500).send({message: 'Error en la peticion'})
 
-        res.status(200).send({ company: empresaActualizada});
-    })
+            if(!empresaActualizada) return res.status(404).send({message: 'No se a podido actualizar'});
+
+            res.status(200).send({ company: empresaActualizada});
+        })
+    }    
 }
 
 function borrarEmpresa(req, res) {
@@ -178,8 +221,19 @@ function borrarEmpresa(req, res) {
             res.status(200).send({message: 'Se logro eliminar la empresa correctamente'});
         })
     }else{
-        res.status(404).send({message: 'Usted es administrador'});
+        res.status(404).send({message: 'Usted no es administrador'});
     }
+}
+
+function buscarEmpresa(req, res) {
+    var nombre = req.body.nombre; 
+    
+    Company.find(
+        {nombre: new RegExp('^' + nombre, 'i')
+    }).exec((err, buscarEmpresa)=>{
+        if(!buscarEmpresa) return res.status(404).send({message: 'No hay Coincidencias en la Base de Datos'});
+        return res.status(200).send({buscarEmpresa:buscarEmpresa});
+    });
 }
 
 module.exports = {
@@ -187,7 +241,10 @@ module.exports = {
     registrar,
     login,
     editarUsuario,
+    borrarUsuario,
     crearEmpresa,
     modificarEmpresa,
-    borrarEmpresa
+    borrarEmpresa,
+    buscarEmpresa,
+    buscarUsuario
 }
