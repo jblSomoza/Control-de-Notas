@@ -67,20 +67,9 @@ function login(req, res) {
             bcrypt.compare(password, user.password, (err, check)=>{
                 if(check){
                     if(params.getToken){
-                        if(req.body.rol == 'Administrador' || req.body.rol == 'administrador'){
                             return res.status(200).send({
                                 token: jwt.createToken(user),
-                                message: 'Es administrador'
-                            })                            
-                        }else if(req.body.rol == 'Usuario' || req.body.rol == 'usuario'){
-                            return res.status(200).send({
-                                token: jwt.createToken(user),
-                                message: 'Es usuario'
-                            })
-
-                        }else{
-                            return res.status(404).send({message: 'El rol no es Usuario ni Administrardor'});
-                        }
+                            })                              
                     }else{
                         user.password = undefined;
                         return res.status(200).send({user})
@@ -174,17 +163,23 @@ function modificarEmpresa(req, res) {
 }
 
 function borrarEmpresa(req, res) {
-    var empresaId = req.params.empresaId;
 
-    Company.findOneAndDelete(empresaId, (err, empresaBorrada) =>{
-        if(err) return res.status(500).send({message: 'Error en la peticion'})
+    if(req.user.rol == 'Administrador')
+    {  
+        var empresaId = req.params.empresaId;
 
-        if(!empresaBorrada) return res.status(404).send({message: 'No se a podido borrar'});
+        Company.findOneAndDelete(empresaId, (err, empresaBorrada) =>{
+            if(err) return res.status(500).send({message: 'Error en la peticion'})
 
-        if(err) return next(err);
+            if(!empresaBorrada) return res.status(404).send({message: 'No se a podido borrar'});
 
-        res.status(200).send({message: 'Se logro eliminar la empresa correctamente'});
-    })
+            if(err) return next(err);
+
+            res.status(200).send({message: 'Se logro eliminar la empresa correctamente'});
+        })
+    }else{
+        res.status(404).send({message: 'Usted es administrador'});
+    }
 }
 
 module.exports = {
